@@ -69,13 +69,12 @@
       font-size: 18px;
       letter-spacing: 1px;
       background: transparent;
-      text-align: left;
-      direction: ltr;
-      unicode-bidi: embed;
+      text-align: center;
       width: 80%;
       padding: 8px;
       color: #000;
       margin-bottom: 10px;
+      direction: ltr; /* Sağdan sola yazılmayı engelle */
     }
     #bottomLogo {
       position: fixed;
@@ -183,7 +182,7 @@
         "Bahçe": "Bitki yetiştirmeye ve dinlenmeye uygun düzenlenmiş yeşil alan",
         "Yeşil": "Bir renk",
         "Yaban": "Vahşi, doğal",
- "Yunus": "Sosyal ve zeki memeli"
+        "Yunus": "Sosyal ve zeki memeli"
       },
       6: {
         "Rüzgar": "Havanın hareketiyle oluşan doğal akım",
@@ -199,7 +198,8 @@
       },
       7: {
         "Ekoloji": "Canlıların çevreleriyle ilişkisini inceleyen bilim",
-        "Dönüşüm": "Kafka'nın bilinen eseri",
+        "Dönüşüm": "Kafka'nın bilinen e
+seri",
         "Tasarım": "Estetik ve işlevsel planlama süreci",
         "Habitat": "Canlıların doğal yaşam alanı",
         "Erozyon": "Toprağın su veya rüzgarla aşınıp taşınması",
@@ -264,7 +264,7 @@
     }
 
     // Rastgele seçim fonksiyonu
-    function getRandomItems(array North America: {
+    function getRandomItems(array, count) {
       const shuffled = [...array].sort(() => 0.5 - Math.random());
       return shuffled.slice(0, count);
     }
@@ -285,9 +285,19 @@
         let enteredCode = document.getElementById("roomCodeInput").value.trim().toUpperCase();
 
         if (enteredCode) {
-          const joined = await joinRoom(enteredCode);
+          const roomSnap = await db.ref(`rooms/${enteredCode}`).get();
+          if (!roomSnap.exists()) {
+            alert("Oda bulunamadı.");
+            return;
+          }
+          const roomData = roomSnap.val();
+          if (roomData.players && Object.keys(roomData.players).length >= playerCount) {
+            alert("Oda dolu.");
+            return;
+          }
+          roomCode = enteredCode;
+          const joined = await joinRoom(roomCode);
           if (joined) {
-            roomCode = enteredCode;
             startGame();
           }
         } else {
@@ -530,16 +540,26 @@
 
       if (guess.toLowerCase() === currentAnswer.toLowerCase()) {
         scores[currentPlayerIndex] += points[currentAnswer.length] || 0;
+        currentQuestionIndex++;
+        revealedLetters = [];
+        currentGameState = {};
+        db.ref(`rooms/${roomCode}`).update({
+          scores,
+          currentQuestionIndex,
+          revealedLetters,
+          currentGameState
+        });
+      } else {
+        alert("Yanlış cevap, bir sonraki soruya geçiliyor.");
+        currentQuestionIndex++;
+        revealedLetters = [];
+        currentGameState = {};
+        db.ref(`rooms/${roomCode}`).update({
+          currentQuestionIndex,
+          revealedLetters,
+          currentGameState
+        });
       }
-      currentQuestionIndex++;
-      revealedLetters = [];
-      currentGameState = {};
-      db.ref(`rooms/${roomCode}`).update({
-        scores,
-        currentQuestionIndex,
-        revealedLetters,
-        currentGameState
-      });
 
       document.getElementById("answerInput").value = "";
     }
