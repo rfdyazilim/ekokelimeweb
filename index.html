@@ -110,7 +110,6 @@
     <div id="playerInfo"></div>
     <div id="questionArea"></div>
     <div id="scoreboard"></div>
-    <button id="btnNextTurn" style="display:none;">Sonraki Soru</button>
   </div>
 
   <!-- Alt logo -->
@@ -137,7 +136,7 @@
     let playerName = "";
     let playerCount = 2;
     let roomCode = "";
-    let currentPlayerIndex = 0; // Sıra kimde?
+    let currentPlayerIndex = 0;
     let players = [];
     let questionsList = [];
     let currentQuestionIndex = 0;
@@ -145,8 +144,9 @@
     let timerInterval = null;
     let timeRemaining = 180; // 3 dakika saniye cinsinden
     let revealedLetters = [];
+    let currentAnswer = "";
 
-    // Kelimeler ve tanımlar (kısaltıldı, tamamını yukarıdan alabilirsin)
+    // Kelimeler ve tanımlar
     const kelimeler = {
       4: {
         "Atık": "Kullanım sonrası geriye kalan maddeler",
@@ -160,7 +160,7 @@
         "Oyun": "Eğlence amacıyla yapılan etkinlik",
         "Dere": "Küçük, doğal su yolu"
       },
-            5: {
+      5: {
         "Çevre": "Canlıların yaşadığı ve etkileşimde bulunduğu doğal veya insan yapımı ortam",
         "İklim": "Uzun süreli hava koşulları ortalaması",
         "Liken": "Mantar ve fotosentetik organizmanın simbiyotik ilişkisi",
@@ -174,7 +174,7 @@
       },
       6: {
         "Rüzgar": "Havanın hareketiyle oluşan doğal akım",
-        "Toprak": "Bitkilerin yetiştiği ve canlıların barındığı doğal zemin ",
+        "Toprak": "Bitkilerin yetiştiği ve canlıların barındığı doğal zemin",
         "Peyzaj": "Fransızca kır manzarası",
         "Enerji": "Hareketi meydana getiren temel güç",
         "Deprem": "Yer kabuğunun sarsılması",
@@ -232,7 +232,17 @@
         "Yeşilkuşak": "Şehirleri çevreleyen, ekolojik dengeyi koruyan ağaçlık ve doğal alanlar",
         "Büyükşehir": "Gelişmiş sosyal ve altyapılı şehir"
       }
+    };
 
+    // Puan tablosu (kelime uzunluğuna göre)
+    const points = {
+      4: 400,
+      5: 500,
+      6: 600,
+      7: 700,
+      8: 800,
+      9: 900,
+      10: 1000,
     };
 
     // Rastgele oda kodu üret
@@ -240,7 +250,7 @@
       return Math.random().toString(36).substring(2, 8).toUpperCase();
     }
 
-    // Buton tıklaması - oyun başlat
+    // Başlat butonu
     document.getElementById("btnStart").onclick = async () => {
       playerName = document.getElementById("playerNameInput").value.trim();
       if (!playerName) {
@@ -255,14 +265,12 @@
       let enteredCode = document.getElementById("roomCodeInput").value.trim().toUpperCase();
 
       if (enteredCode) {
-        // Odaya katılma denemesi
         const roomSnap = await db.ref(`rooms/${enteredCode}`).get();
         if (!roomSnap.exists()) {
           alert("Oda bulunamadı.");
           return;
         }
         roomCode = enteredCode;
-        // Oyuncu sayısı kontrolü
         const roomData = roomSnap.val();
         if (roomData.players && Object.keys(roomData.players).length >= playerCount) {
           alert("Oda dolu.");
@@ -270,7 +278,6 @@
         }
         await joinRoom(roomCode);
       } else {
-        // Oda kur
         roomCode = generateRoomCode();
         await createRoom(roomCode);
       }
@@ -278,14 +285,13 @@
       startGame();
     };
 
-    // Oda kur
+    // Oda oluştur
     async function createRoom(code) {
       players = [playerName];
       scores = [0];
       currentPlayerIndex = 0;
       currentQuestionIndex = 0;
 
-      // Her oyuncu için soru listesi oluştur
       questionsList = [];
       for (let len = 4; len <= 10; len++) {
         let keys = Object.keys(kelimeler[len] || {});
@@ -299,12 +305,12 @@
       }
 
       await db.ref(`rooms/${code}`).set({
-        players: players,
-        playerCount: playerCount,
-        currentPlayerIndex: currentPlayerIndex,
-        currentQuestionIndex: currentQuestionIndex,
-        scores: scores,
-        questionsList: questionsList,
+        players,
+        playerCount,
+        currentPlayerIndex,
+        currentQuestionIndex,
+        scores,
+        questionsList,
         revealedLetters: [],
         timerStart: Date.now()
       });
@@ -326,16 +332,13 @@
       if (!players.includes(playerName)) {
         players.push(playerName);
         scores.push(0);
-        await roomRef.update({
-          players: players,
-          scores: scores
-        });
+        await roomRef.update({ players, scores });
       }
 
       alert(`Odaya katıldınız: ${code}`);
     }
 
-    // Oyun başlat - dinleme başlat
+    // Oyun başlat
     function startGame() {
       document.getElementById("startScreen").style.display = "none";
       document.getElementById("gameArea").style.display = "block";
@@ -344,7 +347,7 @@
       listenRoom();
     }
 
-    // Firebase realtime dinleme
+    // Firebase dinleme
     function listenRoom() {
       db.ref(`rooms/${roomCode}`).on("value", (snapshot) => {
         const data = snapshot.val();
@@ -360,21 +363,17 @@
         updatePlayerInfo();
         updateScoreboard();
 
-        // Eğer sıra sende ise soruyu göster
+        if (!timerInterval) startTimer(data.timerStart);
+
         if (players[currentPlayerIndex] === playerName) {
           showQuestion();
-          startTimer();
-          document.getElementById("btnNextTurn").style.display = "none";
         } else {
-          // Diğer oyuncu bekliyor
           document.getElementById("questionArea").innerHTML = `<h3>${players[currentPlayerIndex]} oyuncusu oynuyor. Lütfen bekleyin...</h3>`;
-          stopTimer();
-          document.getElementById("btnNextTurn").style.display = "none";
         }
       });
     }
 
-    // Oyuncu bilgisi göster
+    // Oyuncu bilgisi
     function updatePlayerInfo() {
       let html = `<h2>Oyuncular:</h2><ul>`;
       players.forEach((p, i) => {
@@ -384,114 +383,7 @@
       document.getElementById("playerInfo").innerHTML = html;
     }
 
-    // Soru göster
-    function showQuestion() {
-      if (currentQuestionIndex >= questionsList.length) {
-        endGame();
-        return;
-      }
-
-      const q = questionsList[currentQuestionIndex];
-      currentAnswer = q.word;
-      // revealedLetters array reset değil, realtime'dan alıyoruz
-      if (!revealedLetters.length) revealedLetters = new Array(currentAnswer.length).fill(false);
-
-      let placeholderStr = "";
-      for (let i = 0; i < currentAnswer.length; i++) {
-        placeholderStr += revealedLetters[i] ? currentAnswer[i] + " " : "_ ";
-      }
-
-      document.getElementById("questionArea").innerHTML = `
-        <h2>${playerName} - Kelime Tanımı (${q.wordLength} harfli):</h2>
-        <p>${q.definition}</p>
-        <input type="text" id="answerInput" placeholder="${placeholderStr.trim()}" onkeydown="if(event.key==='Enter') checkAnswer()" autofocus />
-        <button onclick="checkAnswer()">Cevabı Kontrol Et</button>
-        <button onclick="requestHint()">İpucu İste (-100 Puan)</button>
-      `;
-    }
-
-    // Cevap kontrol
-    async function checkAnswer() {
-      const answerInput = document.getElementById("answerInput");
-      if (!answerInput) return;
-      let answer = answerInput.value.trim();
-      if (!answer) return alert("Lütfen bir cevap girin!");
-
-      if (answer.toLocaleLowerCase("tr-TR") === currentAnswer.toLocaleLowerCase("tr-TR")) {
-        scores[currentPlayerIndex] = (scores[currentPlayerIndex] || 0) + (points[currentAnswer.length] || 1000);
-        alert("Doğru cevap!");
-      } else {
-        alert("Yanlış cevap! Doğru cevap: " + currentAnswer);
-      }
-      await nextQuestion();
-    }
-
-    // Sonraki soru
-    async function nextQuestion() {
-      currentQuestionIndex++;
-      revealedLetters = [];
-
-      // Firebase güncelle
-      await db.ref(`rooms/${roomCode}`).update({
-        currentQuestionIndex: currentQuestionIndex,
-        scores: scores,
-        revealedLetters: revealedLetters
-      });
-
-      // Eğer sorular bitti ise turu diğer oyuncuya ver
-      if (currentQuestionIndex >= questionsList.length) {
-        await nextPlayerTurn();
-      }
-    }
-
-    // Sıradaki oyuncuya geçiş
-    async function nextPlayerTurn() {
-      currentQuestionIndex = 0;
-      currentPlayerIndex++;
-      if (currentPlayerIndex >= players.length) {
-        endGame();
-        return;
-      }
-      revealedLetters = [];
-      await db.ref(`rooms/${roomCode}`).update({
-        currentPlayerIndex: currentPlayerIndex,
-        currentQuestionIndex: currentQuestionIndex,
-        revealedLetters: revealedLetters
-      });
-    }
-
-    // İpucu iste
-    async function requestHint() {
-      if (!revealedLetters.length) revealedLetters = new Array(currentAnswer.length).fill(false);
-      let unrevealedIndices = [];
-      for (let i = 0; i < currentAnswer.length; i++) {
-        if (!revealedLetters[i]) unrevealedIndices.push(i);
-      }
-      if (unrevealedIndices.length === 0) {
-        alert("Tüm harfler zaten açık!");
-        return;
-      }
-      // Rastgele bir harfi aç
-      const randIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
-      revealedLetters[randIndex] = true;
-      scores[currentPlayerIndex] = (scores[currentPlayerIndex] || 0) - 100;
-
-      // Firebase güncelle
-      await db.ref(`rooms/${roomCode}`).update({
-        revealedLetters: revealedLetters,
-        scores: scores
-      });
-
-      // Yeni placeholder oluştur ve güncelle
-      let placeholderStr = "";
-      for (let i = 0; i < currentAnswer.length; i++) {
-        placeholderStr += revealedLetters[i] ? currentAnswer[i] + " " : "_ ";
-      }
-      const answerInput = document.getElementById("answerInput");
-      if (answerInput) answerInput.setAttribute("placeholder", placeholderStr.trim());
-    }
-
-    // Skor panosu güncelle
+    // Skor panosu
     function updateScoreboard() {
       let html = `<h2>Skorlar:</h2><ul>`;
       players.forEach((p, i) => {
@@ -501,24 +393,136 @@
       document.getElementById("scoreboard").innerHTML = html;
     }
 
-    // Timer işlemleri
-    function startTimer() {
+    // Soru göster
+    function showQuestion() {
+      if (currentQuestionIndex >= questionsList.length) {
+        nextPlayerTurn();
+        return;
+      }
+
+      const q = questionsList[currentQuestionIndex];
+      currentAnswer = q.word;
+
+      if (revealedLetters.length !== currentAnswer.length) {
+        revealedLetters = new Array(currentAnswer.length).fill(false);
+        db.ref(`rooms/${roomCode}`).update({ revealedLetters });
+      }
+
+      let placeholderStr = "";
+      for (let i = 0; i < currentAnswer.length; i++) {
+        placeholderStr += revealedLetters[i] ? currentAnswer[i] + " " : "_ ";
+      }
+
+      document.getElementById("questionArea").innerHTML = `
+        <h3>${q.wordLength} Harfli Kelime</h3>
+        <p><i>${q.definition}</i></p>
+        <p>${placeholderStr}</p>
+        <input type="text" id="answerInput" placeholder="Tahmininizi yazın" autocomplete="off" />
+        <button id="btnSubmitAnswer">Gönder</button>
+        <button id="btnRevealLetter">Harf Aç</button>
+      `;
+
+      document.getElementById("answerInput").focus();
+
+      document.getElementById("btnSubmitAnswer").onclick = submitAnswer;
+      document.getElementById("btnRevealLetter").onclick = revealLetter;
+    }
+
+    // Harf aç
+    function revealLetter() {
+      for (let i = 0; i < revealedLetters.length; i++) {
+        if (!revealedLetters[i]) {
+          revealedLetters[i] = true;
+          db.ref(`rooms/${roomCode}`).update({ revealedLetters });
+          break;
+        }
+      }
+    }
+
+    // Cevap gönder
+    function submitAnswer() {
+      let guess = document.getElementById("answerInput").value.trim();
+
+      if (!guess) {
+        alert("Lütfen bir cevap girin.");
+        return;
+      }
+
+      if (guess.toLowerCase() === currentAnswer.toLowerCase()) {
+        scores[currentPlayerIndex] += points[currentAnswer.length] || 0;
+        currentQuestionIndex++;
+        revealedLetters = [];
+        db.ref(`rooms/${roomCode}`).update({
+          scores,
+          currentQuestionIndex,
+          revealedLetters,
+        });
+      } else {
+        alert("Yanlış cevap, tekrar deneyin.");
+      }
+
+      document.getElementById("answerInput").value = "";
+      showQuestion();
+    }
+
+    // Sıradaki oyuncuya geç
+    async function nextPlayerTurn() {
+      currentQuestionIndex = 0;
+      revealedLetters = [];
+      currentPlayerIndex++;
+      if (currentPlayerIndex >= players.length) {
+        endGame();
+        return;
+      }
+      await db.ref(`rooms/${roomCode}`).update({
+        currentPlayerIndex,
+        currentQuestionIndex,
+        revealedLetters,
+      });
+    }
+
+    // Oyun sonu
+    function endGame() {
       stopTimer();
-      timeRemaining = 180;
-      updateTimerDisplay();
+      let maxScore = Math.max(...scores);
+      let winners = players.filter((p, i) => scores[i] === maxScore);
+
+      document.getElementById("questionArea").innerHTML = `
+        <h2>Oyun Bitti!</h2>
+        <p>Kazanan(lar): ${winners.join(", ")}</p>
+        <p>Puan: ${maxScore}</p>
+      `;
+    }
+
+    // Timer
+    function startTimer(timerStartFrom) {
+      stopTimer();
+
+      if (!timerStartFrom) {
+        timerStartFrom = Date.now();
+        db.ref(`rooms/${roomCode}`).update({ timerStart: timerStartFrom });
+      }
+
       timerInterval = setInterval(() => {
-        timeRemaining--;
-        updateTimerDisplay();
+        let elapsed = Math.floor((Date.now() - timerStartFrom) / 1000);
+        timeRemaining = 180 - elapsed;
+
         if (timeRemaining <= 0) {
-          alert("Süre bitti!");
+          timeRemaining = 0;
+          updateTimerDisplay();
           stopTimer();
-          nextQuestion();
+          endGame();
+        } else {
+          updateTimerDisplay();
         }
       }, 1000);
     }
 
     function stopTimer() {
-      if (timerInterval) clearInterval(timerInterval);
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
     }
 
     function updateTimerDisplay() {
@@ -526,35 +530,6 @@
       let s = timeRemaining % 60;
       document.getElementById("timer").textContent = `${m}:${s < 10 ? "0" + s : s}`;
     }
-
-    // Oyun bitişi
-    function endGame() {
-      stopTimer();
-      let ranking = players
-        .map((p, i) => ({ name: p, score: scores[i] || 0 }))
-        .sort((a, b) => b.score - a.score);
-
-      let html = `<h2>Oyun Tamamlandı!</h2>`;
-      html += `<h3>Kazanan: ${ranking[0].name} (${ranking[0].score} Puan)</h3>`;
-      html += `<h3>Sıralama:</h3><ol>`;
-      ranking.forEach((r) => {
-        html += `<li>${r.name}: ${r.score} Puan</li>`;
-      });
-      html += `</ol>`;
-      document.getElementById("gameArea").innerHTML = html;
-    }
-
-    // Puan tablosu (kelime uzunluğuna göre)
-    const points = {
-      4: 400,
-      5: 500,
-      6: 600,
-      7: 700,
-      8: 800,
-      9: 900,
-      10: 1000,
-    };
-
   </script>
 </body>
 </html>
