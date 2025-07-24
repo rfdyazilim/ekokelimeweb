@@ -1,24 +1,3 @@
-Haklısınız, önceki cevabım size birleştirilmiş bir kod sunsa da, incelediğimde içinde "burayı doldurun" şeklinde bıraktığım kritik eksiklikler olduğunu görüyorum. Özellikle kelime ve puan listeleri ile bazı fonksiyonların içi boş bırakılmış. Bu, kodu doğrudan çalışmaz hale getirir.
-
-Özür dilerim bu eksiklik için.
-
-**Evet, yukarıda paylaştığınız kod istediğiniz gibi tek bir dosya halindedir, ancak tam olarak çalışır durumda değildir.**
-
-Aşağıda, tüm bu eksikleri giderdiğim, kelime ve puan listelerini eklediğim, fonksiyonları tamamladığım ve önceki tüm isteklerinizi içeren, **gerçekten tek parça ve çalışmaya hazır** halini sunuyorum.
-
-Bu versiyonda şunlar tamamlanmıştır:
-
-  * `kelimeler` ve `points` objeleri kodun içine eklenmiştir.
-  * `revealLetter` gibi eksik bırakılan fonksiyonlar yazılmıştır.
-  * Oyuncu ID'sinin (`myPlayerId`) daha tutarlı çalışması için küçük bir iyileştirme yapılmıştır.
-  * Oyun sonu (`endGame`) mantığı daha net hale getirilmiştir.
-  * Genel kod akışı daha tutarlı olacak şekilde düzenlenmiştir.
-
-### İşte Eksiksiz ve Çalışan Kod
-
-Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize bağlı olarak sorunsuz çalışacaktır.
-
-```html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -155,7 +134,6 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
   <div id="endGameScreen" class="container" style="display:none;"></div>
 
   <script>
-    // Lütfen burayı kendi Firebase projenizin bilgileriyle güncelleyin.
     const firebaseConfig = {
       apiKey: "AIzaSyAuFzlMGvI2jKgxiGSbkWHeI5_xzue24iU",
       authDomain: "ekokelime.firebaseapp.com",
@@ -168,16 +146,14 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Oyun değişkenleri
     let myPlayerId = localStorage.getItem('myPlayerId') || db.ref().push().key;
     localStorage.setItem('myPlayerId', myPlayerId);
     let playerName = "";
     let roomCode = "";
     let roomListener = null;
     let timerInterval = null;
-    const TURN_DURATION = 180; // 3 dakika
+    const TURN_DURATION = 180;
 
-    // TAMAMLANMIŞ: Kelimeler ve Puanlar
     const kelimeler = {
         4: {"Atık": "Kullanım sonrası geriye kalan maddeler", "Azot": "Atmosferde en yüksek yüzdeyle bulunan gaz", "Hava": "Sonrasına cıva getirilerek konuşulan konunun boş olduğunu belirten kelime", "Ağaç": "Orman dokusu", "Otsu": "Ot gibi olan", "Kent": "Şehir", "Park": "Vatandaşların dinlenme ve oyun ihtiyaçlarını karşılayan alan", "Plan": "Belirlenen hedefe ulaşmak için oluşturulan strateji ve yol haritası", "Oyun": "Eğlence amacıyla yapılan etkinlik", "Dere": "Küçük, doğal su yolu"},
         5: {"Çevre": "Canlıların yaşadığı ve etkileşimde bulunduğu doğal veya insan yapımı ortam", "İklim": "Uzun süreli hava koşulları ortalaması", "Liken": "Mantar ve fotosentetik organizmanın simbiyotik ilişkisi", "Flora": "Bir bölgede bulunan bitki türlerinin toplamı", "Fauna": "Bir bölgede bulunan hayvan türlerinin toplamı", "Deniz": "Karaları çevreleyen geniş su kütlesi", "Bahçe": "Bitki yetiştirmeye ve dinlenmeye uygun düzenlenmiş yeşil alan", "Yeşil": "Bir renk", "Yaban": "Vahşi, doğal", "Yunus": "Sosyal ve zeki memeli"},
@@ -246,7 +222,7 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
         document.getElementById("startScreen").style.display = "none";
         
         const playerRef = db.ref(`rooms/${roomCode}/players/${myPlayerId}`);
-        playerRef.onDisconnect().remove(); // Oyundan düşünce kendini sil
+        playerRef.onDisconnect().remove();
         
         if (roomListener) db.ref(`rooms/${roomCode}`).off("value", roomListener);
         
@@ -300,18 +276,18 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
         
         if (data.hostId === myPlayerId) {
             const startButton = document.getElementById("btnForceStart");
-            if(Object.keys(players).length < 2) startButton.disabled = true; // En az 2 oyuncu olmalı
+            if(Object.keys(players).length < 2) startButton.disabled = true;
             startButton.onclick = () => startGame();
         }
     }
     
     async function startGame() {
         const roomData = (await db.ref(`rooms/${roomCode}`).get()).val();
-        const playerIds = Object.keys(roomData.players);
+        const playerIds = Object.keys(roomData.players).sort(() => 0.5 - Math.random());
         
         await db.ref(`rooms/${roomCode}`).update({
             status: 'playing',
-            playerOrder: playerIds.sort(() => 0.5 - Math.random()),
+            playerOrder: playerIds,
             turnIndex: 0,
             turn: {
                 playerId: playerIds[0],
@@ -326,13 +302,14 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
 
     function updateGameArea(data) {
         const turn = data.turn;
+        if (!turn) return; // Henüz tur verisi oluşmamışsa bekle
         const players = data.players;
         const playerOrder = data.playerOrder;
         const turnIndex = data.turnIndex;
         const activePlayerId = playerOrder[turnIndex];
         const activePlayer = players[activePlayerId];
 
-        if (!activePlayer) { // Oyuncu düşmüşse
+        if (!activePlayer) {
             if (myPlayerId === data.hostId) nextPlayerTurn();
             return;
         }
@@ -340,7 +317,7 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
         const isMyTurn = activePlayerId === myPlayerId;
         const q = turn.questions[turn.questionIndex];
         
-        if (!q) { // Sorular bittiyse
+        if (!q) {
             if(isMyTurn) nextPlayerTurn();
             return;
         }
@@ -358,7 +335,7 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
             <button id="btnRevealLetter" ${!isMyTurn ? 'disabled' : ''}>Harf Al (-100 Puan)</button>
             <hr>
             <h3>Skor Tablosu</h3>
-            <ul>${playerOrder.map(pid => `<li class="${pid === activePlayerId ? 'active-player' : ''}"><span>${players[pid].name}</span> <span>${players[pid].score} Puan</span></li>`).join('')}</ul>
+            <ul>${playerOrder.map(pid => `<li class="${pid === activePlayerId ? 'active-player' : ''}"><span>${players[pid] ? players[pid].name : 'Ayrıldı'}</span> <span>${players[pid] ? players[pid].score : ''}</span></li>`).join('')}</ul>
         `;
         document.getElementById("gameArea").innerHTML = gameHTML;
 
@@ -375,6 +352,7 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
         startTimer(turn.startTime);
     }
     
+    // -- YENİ VE İYİLEŞTİRİLMİŞ FONKSİYONLAR --
     async function submitAnswer(correctWord) {
         const guess = document.getElementById("answerInput").value.trim().toUpperCase();
         if (!guess) return;
@@ -383,19 +361,57 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
         if (guess === correctWord.toUpperCase()) {
             scoreChange = points[correctWord.length] || 0;
         } else {
-            scoreChange = -200; // Yanlış cevap cezası
+            scoreChange = -200;
         }
+
         await db.ref(`rooms/${roomCode}/players/${myPlayerId}/score`).set(firebase.database.ServerValue.increment(scoreChange));
-        
-        // Sıradaki soruya geç
-        await db.ref(`rooms/${roomCode}/turn`).update({
-            questionIndex: firebase.database.ServerValue.increment(1),
-            revealedLetters: [],
-            guess: ""
-        });
+        await moveToNextQuestion();
     }
 
-    // TAMAMLANMIŞ: Harf açma fonksiyonu
+    async function moveToNextQuestion() {
+        const turnRef = db.ref(`rooms/${roomCode}/turn`);
+        const turnSnap = await turnRef.get();
+        const turnData = turnSnap.val();
+
+        if (turnData.questionIndex + 1 >= turnData.questions.length) {
+            await nextPlayerTurn();
+        } else {
+            await turnRef.update({
+                questionIndex: firebase.database.ServerValue.increment(1),
+                revealedLetters: [],
+                guess: ""
+            });
+        }
+    }
+
+    async function nextPlayerTurn() {
+        stopTimer();
+        const roomSnap = await db.ref(`rooms/${roomCode}`).get();
+        const data = roomSnap.val();
+        
+        if (!data || !data.playerOrder) return;
+
+        const newTurnIndex = data.turnIndex + 1;
+
+        if (newTurnIndex >= data.playerOrder.length) {
+            await db.ref(`rooms/${roomCode}`).update({ status: 'finished' });
+        } else {
+            const nextPlayerId = data.playerOrder[newTurnIndex];
+            await db.ref(`rooms/${roomCode}`).update({
+                turnIndex: newTurnIndex,
+                turn: {
+                    playerId: nextPlayerId,
+                    questions: generateStructuredTurnQuestions(),
+                    questionIndex: 0,
+                    revealedLetters: [],
+                    guess: "",
+                    startTime: firebase.database.ServerValue.TIMESTAMP
+                }
+            });
+        }
+    }
+    // -- BİTİŞ: YENİ VE İYİLEŞTİRİLMİŞ FONKSİYONLAR --
+
     async function revealLetter(word) {
         const turnRef = db.ref(`rooms/${roomCode}/turn`);
         const turnSnap = await turnRef.get();
@@ -416,44 +432,19 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
         }
     }
     
-    async function nextPlayerTurn() {
-        stopTimer();
-        const roomSnap = await db.ref(`rooms/${roomCode}`).get();
-        const data = roomSnap.val();
-        
-        const newTurnIndex = data.turnIndex + 1;
-
-        if (newTurnIndex >= data.playerOrder.length) {
-            await db.ref(`rooms/${roomCode}`).update({ status: 'finished' });
-        } else {
-            const nextPlayerId = data.playerOrder[newTurnIndex];
-            await db.ref(`rooms/${roomCode}`).update({
-                turnIndex: newTurnIndex,
-                turn: {
-                    playerId: nextPlayerId,
-                    questions: generateStructuredTurnQuestions(),
-                    questionIndex: 0,
-                    revealedLetters: [],
-                    guess: "",
-                    startTime: firebase.database.ServerValue.TIMESTAMP
-                }
-            });
-        }
-    }
-
     function showEndGame(data) {
         stopTimer();
-        const players = Object.values(data.players).sort((a,b) => b.score - a.score);
+        const players = Object.values(data.players || {}).sort((a,b) => b.score - a.score);
         let html = `
             <h2>Oyun Bitti!</h2>
-            <h3>Kazanan: ${players[0].name} 🏆</h3>
+            <h3>Kazanan: ${players.length > 0 ? players[0].name : ''} 🏆</h3>
             <ul>
                 ${players.map((p, i) => `<li><span>${i+1}. ${p.name}</span> <span>${p.score} Puan</span></li>`).join('')}
             </ul>
             <button onclick="window.location.reload()">Yeni Oyun</button>
         `;
         document.getElementById("endGameScreen").innerHTML = html;
-        setTimeout(() => db.ref(`rooms/${roomCode}`).remove(), 30000); // 30 saniye sonra odayı sil
+        setTimeout(() => db.ref(`rooms/${roomCode}`).remove(), 30000);
     }
 
     function startTimer(startTime) {
@@ -466,7 +457,7 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
                 timeRemaining = 0;
                 stopTimer();
                 const roomData = (await db.ref(`rooms/${roomCode}`).get()).val();
-                if(myPlayerId === roomData.playerOrder[roomData.turnIndex]){
+                if(roomData && roomData.playerOrder && myPlayerId === roomData.playerOrder[roomData.turnIndex]){
                     nextPlayerTurn();
                 }
             }
@@ -483,4 +474,3 @@ Bu kodu kopyalayıp `index.html` olarak kaydettiğinizde, Firebase projenize ba�
   </script>
 </body>
 </html>
-```
