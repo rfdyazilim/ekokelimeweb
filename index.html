@@ -1,3 +1,8 @@
+Elbette, anladım. İşte tüm HTML kodunun, kelime listesi de dahil olmak üzere, birleştirilmiş ve tam hali.
+
+Aşağıdaki kodu kopyalayıp doğrudan bir `.html` dosyasına yapıştırarak çalıştırabilirsiniz. Önceki tüm düzeltmeleri içermektedir.
+
+```html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -34,19 +39,18 @@
       color: white;
       border: none;
       border-radius: 5px;
-      padding: 12px 20px;
+      padding: 10px 15px;
       cursor: pointer;
-      font-size: 18px;
+      font-size: 16px;
       transition: background-color 0.3s ease;
       margin: 5px;
-      touch-action: manipulation;
+    }
+    button:hover {
+      background-color: #45a049;
     }
     button:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
-    button:hover:not(:disabled) {
-      background-color: #45a049;
+        background-color: #cccccc;
+        cursor: not-allowed;
     }
     #gameArea, #playerInfo, #questionArea, #scoreboard {
       margin-top: 20px;
@@ -62,6 +66,7 @@
       max-width: 400px;
       margin: auto;
       color: #000;
+      text-align: center;
     }
     input[type="text"], input[type="number"] {
       border: none;
@@ -71,10 +76,11 @@
       background: transparent;
       text-align: center;
       width: 80%;
-      padding: 8px;
+      padding: 5px;
       color: #000;
-      margin-bottom: 10px;
-      direction: ltr; /* Sağdan sola yazılmayı engelle */
+    }
+    input:disabled {
+        background-color: #f2f2f2;
     }
     #bottomLogo {
       position: fixed;
@@ -83,38 +89,29 @@
       transform: translateX(-50%);
       height: 100px;
     }
-    .question-text {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .definition-text {
-      font-style: italic;
-      margin-bottom: 10px;
-    }
-    .placeholder-text {
-      font-size: 24px;
-      letter-spacing: 5px;
-      margin-bottom: 15px;
-    }
   </style>
 
-  <!-- Firebase SDK - Compat versiyon -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
 </head>
 <body>
+
   <img src="images/logo.png" alt="Logo" id="logo" />
+
   <h1>Ekolojik Kelime Oyunu - Online Multiplayer</h1>
   <div id="timer">3:00</div>
 
   <div id="startScreen">
     <label for="playerNameInput">İsminiz:</label><br />
     <input type="text" id="playerNameInput" placeholder="İsminizi girin" /><br /><br />
+
     <label for="playerCountInput">Oyuncu Sayısı (1-5):</label><br />
     <input type="number" id="playerCountInput" min="1" max="5" value="2" /><br /><br />
+
     <label for="roomCodeInput">Oda Kodu (varsa):</label><br />
     <input type="text" id="roomCodeInput" placeholder="Oda kodu gir veya boş bırak" maxlength="6" /><br /><br />
+
     <button id="btnStart">Odaya Katıl / Kur</button>
   </div>
 
@@ -153,10 +150,9 @@
     let currentQuestionIndex = 0;
     let scores = [];
     let timerInterval = null;
-    let timeRemaining = 180;
+    let timeRemaining = 180; // Her oyuncu için 3 dakika
     let revealedLetters = [];
     let currentAnswer = "";
-    let currentGameState = {};
 
     // Kelimeler ve tanımlar
     const kelimeler = {
@@ -198,8 +194,7 @@
       },
       7: {
         "Ekoloji": "Canlıların çevreleriyle ilişkisini inceleyen bilim",
-        "Dönüşüm": "Kafka'nın bilinen e
-seri",
+        "Dönüşüm": "Kafka'nın bilinen eseri",
         "Tasarım": "Estetik ve işlevsel planlama süreci",
         "Habitat": "Canlıların doğal yaşam alanı",
         "Erozyon": "Toprağın su veya rüzgarla aşınıp taşınması",
@@ -247,7 +242,7 @@ seri",
       }
     };
 
-    // Puan tablosu
+    // Puan tablosu (kelime uzunluğuna göre)
     const points = {
       4: 400,
       5: 500,
@@ -262,172 +257,134 @@ seri",
     function generateRoomCode() {
       return Math.random().toString(36).substring(2, 8).toUpperCase();
     }
-
-    // Rastgele seçim fonksiyonu
-    function getRandomItems(array, count) {
-      const shuffled = [...array].sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, count);
+    
+    // Soruları harf sayısına göre (2x4, 2x5, ...) sıralı üreten fonksiyon
+    function generateStructuredTurnQuestions() {
+        const structuredQuestions = [];
+        for (let len = 4; len <= 10; len++) {
+            const wordsOfLength = Object.keys(kelimeler[len] || {});
+            // Kelimeleri karıştır ve ilk ikisini al
+            const shuffledWords = wordsOfLength.sort(() => 0.5 - Math.random());
+            const selectedWords = shuffledWords.slice(0, 2);
+            
+            for (const word of selectedWords) {
+                structuredQuestions.push({
+                    wordLength: len,
+                    word: word,
+                    definition: kelimeler[len][word]
+                });
+            }
+        }
+        return structuredQuestions; // Toplam 14 soruluk sıralı liste
     }
+
 
     // Başlat butonu
     document.getElementById("btnStart").onclick = async () => {
-      try {
-        playerName = document.getElementById("playerNameInput").value.trim();
-        if (!playerName) {
-          alert("Lütfen isminizi girin!");
-          return;
-        }
-        playerCount = parseInt(document.getElementById("playerCountInput").value);
-        if (playerCount < 1 || playerCount > 5) {
-          alert("Oyuncu sayısı 1 ile 5 arasında olmalıdır.");
-          return;
-        }
-        let enteredCode = document.getElementById("roomCodeInput").value.trim().toUpperCase();
+      playerName = document.getElementById("playerNameInput").value.trim();
+      if (!playerName) {
+        alert("Lütfen isminizi girin!");
+        return;
+      }
+      playerCount = parseInt(document.getElementById("playerCountInput").value);
+      if (playerCount < 1 || playerCount > 5) {
+        alert("Oyuncu sayısı 1 ile 5 arasında olmalıdır.");
+        return;
+      }
+      let enteredCode = document.getElementById("roomCodeInput").value.trim().toUpperCase();
 
-        if (enteredCode) {
-          const roomSnap = await db.ref(`rooms/${enteredCode}`).get();
-          if (!roomSnap.exists()) {
-            alert("Oda bulunamadı.");
-            return;
-          }
-          const roomData = roomSnap.val();
-          if (roomData.players && Object.keys(roomData.players).length >= playerCount) {
-            alert("Oda dolu.");
-            return;
-          }
-          roomCode = enteredCode;
-          const joined = await joinRoom(roomCode);
-          if (joined) {
-            startGame();
-          }
-        } else {
-          roomCode = generateRoomCode();
-          await createRoom(roomCode);
-          startGame();
+      if (enteredCode) {
+        const roomSnap = await db.ref(`rooms/${enteredCode}`).get();
+        if (!roomSnap.exists()) {
+          alert("Oda bulunamadı.");
+          return;
         }
-      } catch (error) {
-        alert("Bir hata oluştu: " + error.message);
+        roomCode = enteredCode;
+        const roomData = roomSnap.val();
+        if (roomData.players && Object.keys(roomData.players).length >= roomData.playerCount) {
+          alert("Oda dolu.");
+          return;
+        }
+        await joinRoom(roomCode);
+      } else {
+        roomCode = generateRoomCode();
+        await createRoom(roomCode);
       }
     };
 
     // Oda oluştur
     async function createRoom(code) {
-      try {
-        players = [playerName];
-        scores = [0];
-        currentPlayerIndex = 0;
-        currentQuestionIndex = 0;
+      players = [playerName];
+      scores = [0];
+      currentPlayerIndex = 0;
+      currentQuestionIndex = 0;
+      
+      questionsList = generateStructuredTurnQuestions();
 
-        // Her uzunluktan sıralı 2 soru seç
-        questionsList = [];
-        for (let len = 4; len <= 10; len++) {
-          let keys = Object.keys(kelimeler[len] || {});
-          let selectedWords = getRandomItems(keys, Math.min(2, keys.length));
-          for (let word of selectedWords) {
-            questionsList.push({
-              wordLength: len,
-              word: word,
-              definition: kelimeler[len][word]
-            });
-          }
-        }
-
-        await db.ref(`rooms/${code}`).set({
-          players,
-          playerCount,
-          currentPlayerIndex,
-          currentQuestionIndex,
-          scores,
-          questionsList,
-          revealedLetters: [],
-          timerStart: Date.now(),
-          currentGameState: {}
-        });
-        alert(`Oda kuruldu. Kodu diğer oyunculara verin: ${code}`);
-      } catch (error) {
-        alert("Oda oluşturulamadı: " + error.message);
-      }
+      await db.ref(`rooms/${code}`).set({
+        players,
+        playerCount,
+        currentPlayerIndex,
+        currentQuestionIndex,
+        scores,
+        questionsList,
+        revealedLetters: [],
+        turnStartTime: firebase.database.ServerValue.TIMESTAMP
+      });
+      alert(`Oda kuruldu. Kodu diğer oyunculara verin: ${code}`);
+      startGame();
     }
 
     // Odaya katıl
     async function joinRoom(code) {
-      try {
-        const roomRef = db.ref(`rooms/${code}`);
-        const roomSnap = await roomRef.get();
-        if (!roomSnap.exists()) {
-          alert("Oda bulunamadı.");
-          return false;
-        }
+      const roomRef = db.ref(`rooms/${code}`);
+      const roomSnap = await roomRef.get();
+      const roomData = roomSnap.val();
 
-        const roomData = roomSnap.val();
-        players = roomData.players || [];
-        scores = roomData.scores || [];
-        currentPlayerIndex = roomData.currentPlayerIndex || 0;
-        currentQuestionIndex = roomData.currentQuestionIndex || 0;
-        questionsList = roomData.questionsList || [];
-
-        if (players.length >= roomData.playerCount) {
-          alert("Oda dolu. Başka bir odaya katılmayı deneyin.");
-          return false;
-        }
-
-        if (!players.includes(playerName)) {
-          players.push(playerName);
-          scores.push(0);
-          await roomRef.update({ players, scores });
-        }
-
-        alert(`Odaya katıldınız: ${code}`);
-        return true;
-      } catch (error) {
-        alert("Odaya katılamadınız: " + error.message);
-        return false;
+      players = roomData.players || [];
+      scores = roomData.scores || [];
+      
+      if (!players.includes(playerName)) {
+        players.push(playerName);
+        scores.push(0);
+        await roomRef.update({ players, scores });
       }
+      
+      alert(`Odaya katıldınız: ${code}`);
+      startGame();
     }
 
     // Oyun başlat
     function startGame() {
       document.getElementById("startScreen").style.display = "none";
       document.getElementById("gameArea").style.display = "block";
-      updatePlayerInfo();
       listenRoom();
     }
 
     // Firebase dinleme
     function listenRoom() {
       db.ref(`rooms/${roomCode}`).on("value", (snapshot) => {
-        try {
-          const data = snapshot.val();
-          if (!data) {
-            alert("Oda artık mevcut değil!");
-            document.getElementById("gameArea").style.display = "none";
-            document.getElementById("startScreen").style.display = "block";
-            return;
-          }
+        const data = snapshot.val();
+        if (!data) return;
 
-          players = data.players || players;
-          scores = data.scores || scores;
-          currentPlayerIndex = data.currentPlayerIndex ?? currentPlayerIndex;
-          currentQuestionIndex = data.currentQuestionIndex ?? currentQuestionIndex;
-          questionsList = data.questionsList || questionsList;
-          revealedLetters = data.revealedLetters || [];
-          currentGameState = data.currentGameState || {};
+        players = data.players || players;
+        scores = data.scores || scores;
+        
+        const previousPlayerIndex = currentPlayerIndex;
+        currentPlayerIndex = data.currentPlayerIndex ?? currentPlayerIndex;
+        
+        currentQuestionIndex = data.currentQuestionIndex ?? currentQuestionIndex;
+        questionsList = data.questionsList || [];
+        revealedLetters = data.revealedLetters || [];
 
-          updatePlayerInfo();
-          updateScoreboard();
-
-          if (!timerInterval && data.timerStart) {
-            startTimer(data.timerStart);
-          }
-
-          if (players[currentPlayerIndex] === playerName) {
-            showQuestion(true);
-          } else {
-            showQuestion(false);
-          }
-        } catch (error) {
-          alert("Veri alınırken hata oluştu: " + error.message);
+        updatePlayerInfo();
+        updateScoreboard();
+        
+        if (previousPlayerIndex !== currentPlayerIndex || !timerInterval) {
+             startTimer(data.turnStartTime);
         }
+
+        showQuestion(); 
       });
     }
 
@@ -435,7 +392,7 @@ seri",
     function updatePlayerInfo() {
       let html = `<h2>Oyuncular:</h2><ul>`;
       players.forEach((p, i) => {
-        html += `<li>${p} - ${scores[i] || 0} Puan ${i === currentPlayerIndex ? "(Sıra sende)" : ""}</li>`;
+        html += `<li>${p} - ${scores[i] || 0} Puan ${i === currentPlayerIndex ? "<strong>(Sıra sende)</strong>" : ""}</li>`;
       });
       html += "</ul>";
       document.getElementById("playerInfo").innerHTML = html;
@@ -452,55 +409,48 @@ seri",
     }
 
     // Soru göster
-    function showQuestion(isActivePlayer) {
+    function showQuestion() {
+      const isMyTurn = players[currentPlayerIndex] === playerName;
+
+      if (!questionsList || questionsList.length === 0) {
+        document.getElementById("questionArea").innerHTML = `<h3>Sorular yükleniyor...</h3>`;
+        return;
+      }
+      
       if (currentQuestionIndex >= questionsList.length) {
-        nextPlayerTurn();
+        if(isMyTurn) {
+            nextPlayerTurn();
+        } else {
+             document.getElementById("questionArea").innerHTML = `<h3>${players[currentPlayerIndex]} sırasını tamamladı. Yeni oyuncu başlıyor...</h3>`;
+        }
+        return;
+      }
+      
+      if (players.length < playerCount) {
+        document.getElementById("questionArea").innerHTML = `<h3>Diğer oyuncular bekleniyor (${players.length}/${playerCount})... Oda Kodu: ${roomCode}</h3>`;
         return;
       }
 
       const q = questionsList[currentQuestionIndex];
       currentAnswer = q.word;
 
-      if (revealedLetters.length !== currentAnswer.length) {
-        revealedLetters = new Array(currentAnswer.length).fill(false);
-        currentGameState = {
-          wordLength: q.wordLength,
-          definition: q.definition,
-          placeholder: revealedLetters.map((r, i) => r ? currentAnswer[i] : "_").join(" "),
-          currentInput: ""
-        };
-        db.ref(`rooms/${roomCode}`).update({ revealedLetters, currentGameState });
+      let placeholderStr = "";
+      for (let i = 0; i < currentAnswer.length; i++) {
+        placeholderStr += revealedLetters[i] ? currentAnswer[i] + " " : "_ ";
       }
 
-      let placeholderStr = revealedLetters.map((r, i) => r ? currentAnswer[i] : "_").join(" ");
-      let html = `
-        <div class="question-text">${q.wordLength} Harfli Kelime</div>
-        <div class="definition-text">${q.definition}</div>
-        <div class="placeholder-text">${placeholderStr}</div>
+      document.getElementById("questionArea").innerHTML = `
+        <h3>Sıradaki Oyuncu: ${players[currentPlayerIndex]}</h3>
+        <p><b>Soru ${currentQuestionIndex + 1}/14 (${q.wordLength} Harfli)</b></p>
+        <p><i>${q.definition}</i></p>
+        <h2>${placeholderStr.trim()}</h2>
+        <input type="text" id="answerInput" placeholder="Tahmininizi yazın" autocomplete="off" ${!isMyTurn ? 'disabled' : ''} />
+        <button id="btnSubmitAnswer" ${!isMyTurn ? 'disabled' : ''}>Gönder</button>
+        <button id="btnRevealLetter" ${!isMyTurn ? 'disabled' : ''}>Harf Aç (-100 Puan)</button>
       `;
 
-      if (isActivePlayer) {
-        html += `
-          <input type="text" id="answerInput" placeholder="Tahmininizi yazın" autocomplete="off" value="${currentGameState.currentInput || ''}" />
-          <button id="btnSubmitAnswer">Gönder</button>
-          <button id="btnRevealLetter">Harf Aç</button>
-        `;
-      } else {
-        html += `
-          <p>Aktif Oyuncu: ${players[currentPlayerIndex]}</p>
-          <p>Tahmin: ${currentGameState.currentInput || 'Henüz tahmin yok'}</p>
-        `;
-      }
-
-      document.getElementById("questionArea").innerHTML = html;
-
-      if (isActivePlayer) {
-        const answerInput = document.getElementById("answerInput");
-        answerInput.focus();
-        answerInput.addEventListener("input", () => {
-          currentGameState.currentInput = answerInput.value.trim();
-          db.ref(`rooms/${roomCode}/currentGameState`).update({ currentInput: currentGameState.currentInput });
-        });
+      if (isMyTurn) {
+        document.getElementById("answerInput").focus();
         document.getElementById("btnSubmitAnswer").onclick = submitAnswer;
         document.getElementById("btnRevealLetter").onclick = revealLetter;
       }
@@ -508,136 +458,98 @@ seri",
 
     // Harf aç
     function revealLetter() {
-      if (players[currentPlayerIndex] !== playerName) {
-        alert("Sıra sizde değil!");
-        return;
-      }
+      scores[currentPlayerIndex] -= 100;
 
-      let unrevealed = revealedLetters.findIndex(l => !l);
-      if (unrevealed === -1) {
-        alert("Açılacak harf kalmadı!");
-        return;
+      let unrevealedIndexes = [];
+      for(let i=0; i < currentAnswer.length; i++){
+          if(!revealedLetters[i]) unrevealedIndexes.push(i);
       }
+      
+      if(unrevealedIndexes.length > 0){
+        const randomIndex = unrevealedIndexes[Math.floor(Math.random() * unrevealedIndexes.length)];
+        revealedLetters[randomIndex] = true;
 
-      revealedLetters[unrevealed] = true;
-      scores[currentPlayerIndex] = Math.max(0, (scores[currentPlayerIndex] || 0) - 50);
-      currentGameState.placeholder = revealedLetters.map((r, i) => r ? currentAnswer[i] : "_").join(" ");
-      db.ref(`rooms/${roomCode}`).update({ revealedLetters, scores, currentGameState });
+        db.ref(`rooms/${roomCode}`).update({ revealedLetters, scores });
+      }
     }
 
     // Cevap gönder
     function submitAnswer() {
-      if (players[currentPlayerIndex] !== playerName) {
-        alert("Sıra sizde değil!");
-        return;
-      }
-
       let guess = document.getElementById("answerInput").value.trim();
-      if (!guess) {
-        alert("Lütfen bir cevap girin.");
-        return;
-      }
+      if (!guess) return;
 
-      if (guess.toLowerCase() === currentAnswer.toLowerCase()) {
+      if (guess.toUpperCase() === currentAnswer.toUpperCase()) {
         scores[currentPlayerIndex] += points[currentAnswer.length] || 0;
         currentQuestionIndex++;
-        revealedLetters = [];
-        currentGameState = {};
+        revealedLetters = []; // Sonraki soru için temizle
         db.ref(`rooms/${roomCode}`).update({
           scores,
           currentQuestionIndex,
           revealedLetters,
-          currentGameState
         });
       } else {
-        alert("Yanlış cevap, bir sonraki soruya geçiliyor.");
-        currentQuestionIndex++;
-        revealedLetters = [];
-        currentGameState = {};
-        db.ref(`rooms/${roomCode}`).update({
-          currentQuestionIndex,
-          revealedLetters,
-          currentGameState
-        });
+        alert("Yanlış cevap!");
+        scores[currentPlayerIndex] -= 200; // Yanlış cevap cezası
+        db.ref(`rooms/${roomCode}`).update({ scores });
       }
-
-      document.getElementById("answerInput").value = "";
     }
 
     // Sıradaki oyuncuya geç
     async function nextPlayerTurn() {
-      try {
-        currentQuestionIndex = 0;
-        revealedLetters = [];
-        currentGameState = {};
-
-        // Yeni soru listesi oluştur (sıralı)
-        questionsList = [];
-        for (let len = 4; len <= 10; len++) {
-          let keys = Object.keys(kelimeler[len] || {});
-          let selectedWords = getRandomItems(keys, Math.min(2, keys.length));
-          for (let word of selectedWords) {
-            questionsList.push({
-              wordLength: len,
-              word: word,
-              definition: kelimeler[len][word]
-            });
-          }
-        }
-
-        currentPlayerIndex++;
-        if (currentPlayerIndex >= players.length) {
-          endGame();
-          return;
-        }
-
-        await db.ref(`rooms/${roomCode}`).update({
-          currentPlayerIndex,
-          currentQuestionIndex,
-          revealedLetters,
-          questionsList,
-          currentGameState,
-          timerStart: Date.now()
-        });
-      } catch (error) {
-        alert("Sıradaki oyuncuya geçerken hata: " + error.message);
+      stopTimer();
+      currentPlayerIndex++;
+      
+      if (currentPlayerIndex >= players.length) {
+        endGame();
+        return;
       }
+
+      const newQuestions = generateStructuredTurnQuestions();
+      
+      await db.ref(`rooms/${roomCode}`).update({
+        currentPlayerIndex,
+        currentQuestionIndex: 0,
+        revealedLetters: [],
+        questionsList: newQuestions,
+        turnStartTime: firebase.database.ServerValue.TIMESTAMP
+      });
     }
 
     // Oyun sonu
     function endGame() {
       stopTimer();
-      let maxScore = Math.max(...scores);
+      let maxScore = -Infinity;
+      scores.forEach(score => {
+          if(score > maxScore) maxScore = score;
+      });
+      
       let winners = players.filter((p, i) => scores[i] === maxScore);
 
-      let html = `
+      document.getElementById("questionArea").innerHTML = `
         <h2>Oyun Bitti!</h2>
-        <h3>Kazanan(lar): ${winners.join(", ")} (${maxScore} Puan)</h3>
-        <h3>Tüm Skorlar:</h3>
-        <ul>
+        <h3>Kazanan(lar): ${winners.join(", ")}</h3>
+        <h4>Puan: ${maxScore}</h4>
       `;
-      players.forEach((p, i) => {
-        html += `<li>${p}: ${scores[i] || 0} Puan</li>`;
-      });
-      html += `</ul>
-        <button onclick="location.reload()">Yeni Oyun</button>
-      `;
-      document.getElementById("questionArea").innerHTML = html;
+       db.ref(`rooms/${roomCode}`).off();
+       db.ref(`rooms/${roomCode}`).remove();
     }
 
     // Timer
-    function startTimer(timerStartFrom) {
+    function startTimer(turnStartTime) {
       stopTimer();
-
       timerInterval = setInterval(() => {
-        let elapsed = Math.floor((Date.now() - timerStartFrom) / 1000);
+        let elapsed = Math.floor((Date.now() - turnStartTime) / 1000);
         timeRemaining = 180 - elapsed;
 
         if (timeRemaining <= 0) {
           timeRemaining = 0;
           updateTimerDisplay();
           stopTimer();
-          nextPlayerTurn();
+          
+          if (players[currentPlayerIndex] === playerName) {
+            alert("Süreniz doldu!");
+            nextPlayerTurn();
+          }
         } else {
           updateTimerDisplay();
         }
@@ -659,3 +571,4 @@ seri",
   </script>
 </body>
 </html>
+```
