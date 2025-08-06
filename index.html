@@ -3,395 +3,659 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ekolojik Kelime Oyunu - Stabil Versiyon</title>
+  <title>Ekolojik Kelime Oyunu - Online Multiplayer</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: url('https://images.adsttc.com/media/images/66d5/3ffe/d393/f151/0923/af16/slideshow/urban-regeneration-4-projects-harnessing-water-to-reconnect-cities-with-nature_1.jpg?1725251594') no-repeat center center fixed; background-size: cover; margin: 0; padding: 20px; color: #333; display: flex; flex-direction: column; align-items: center; text-align: center; }
-    .container { background-color: rgba(255, 255, 255, 0.97); padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); width: 90%; max-width: 700px; margin-top: 20px; }
-    #timer { position: fixed; top: 15px; right: 15px; font-size: 2em; font-weight: bold; color: white; background-color: rgba(0, 0, 0, 0.7); padding: 8px 16px; border-radius: 8px; }
-    button { background-color: #4CAF50; color: white; border: none; border-radius: 8px; padding: 12px 20px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.2s ease-in-out; margin: 10px 5px; }
-    button:hover:not(:disabled) { background-color: #45a049; transform: translateY(-2px); }
-    button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
-    input[type="text"], input[type="number"] { border: 2px solid #ccc; border-radius: 8px; font-size: 18px; padding: 10px; text-align: center; width: 80%; margin: 10px auto; display: block; }
-    input:focus { border-color: #4CAF50; outline: none; }
-    ul { list-style-type: none; padding: 0; }
-    li { background-color: #f0f0f0; margin: 5px 0; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
-    li.active-player { background-color: #A5D6A7; font-weight: bold; }
-    #questionPlaceholder { font-size: 2.5em; letter-spacing: 0.4em; font-family: 'Courier New', Courier, monospace; font-weight: bold; margin: 20px 0; color: #d32f2f; }
-    #spectatorGuess { font-style: italic; color: #555; height: 24px; margin-top: 15px; }
-    .hidden { display: none; }
+    body {
+      font-family: Arial, sans-serif;
+      background: url('https://images.adsttc.com/media/images/66d5/3ffe/d393/f151/0923/af16/slideshow/urban-regeneration-4-projects-harnessing-water-to-reconnect-cities-with-nature_1.jpg?1725251594') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 20px;
+      color: #000;
+    }
+    #logo {
+      position: fixed;
+      top: 10px;
+      right: 120px;
+      height: 150px;
+    }
+    #timer {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      font-size: 24px;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 12px 20px;
+      cursor: pointer;
+      font-size: 18px;
+      transition: background-color 0.3s ease;
+      margin: 5px;
+      touch-action: manipulation;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #45a049;
+    }
+    #gameArea, #playerInfo, #questionArea, #scoreboard {
+      margin-top: 20px;
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      color: #000;
+    }
+    #startScreen {
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 400px;
+      margin: auto;
+      color: #000;
+    }
+    input[type="text"], input[type="number"] {
+      border: none;
+      border-bottom: 2px solid #000;
+      font-size: 18px;
+      letter-spacing: 1px;
+      background: transparent;
+      text-align: center;
+      width: 80%;
+      padding: 8px;
+      color: #000;
+      margin-bottom: 10px;
+      direction: ltr; /* Sağdan sola yazılmayı engelle */
+    }
+    #bottomLogo {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      height: 100px;
+    }
+    .question-text {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .definition-text {
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+    .placeholder-text {
+      font-size: 24px;
+      letter-spacing: 5px;
+      margin-bottom: 15px;
+    }
   </style>
-</head>
-<body>
 
-  <div id="startScreen" class="container">
-    <h1>Ekolojik Kelime Oyunu</h1>
-    <label for="playerNameInput">İsminiz:</label>
-    <input type="text" id="playerNameInput" placeholder="İsminizi girin" />
-    <label for="playerCountInput">Maksimum Oyuncu Sayısı (2-5):</label>
-    <input type="number" id="playerCountInput" min="2" max="5" value="2" />
-    <label for="roomCodeInput">Oda Kodu (katılmak için):</label>
-    <input type="text" id="roomCodeInput" placeholder="Oda kodu gir veya boş bırak" maxlength="6" />
-    <button id="btnEnterRoom">Odaya Katıl / Kur</button>
-  </div>
-  
-  <div id="lobbyScreen" class="container hidden">
-      <h2>Oyun Lobisi</h2>
-      <p>Bu kodu arkadaşlarınla paylaş: <strong id="lobbyRoomCode"></strong></p>
-      <h3>Oyuncular (<span id="lobbyPlayerCount"></span>/<span id="lobbyMaxPlayers"></span>)</h3>
-      <ul id="lobbyPlayerList"></ul>
-      <button id="btnForceStart" class="hidden">Oyunu Başlat</button>
-      <p id="lobbyWaitingText">Oda yöneticisinin oyunu başlatması bekleniyor...</p>
-  </div>
-
-  <div id="gameArea" class="container hidden">
-      <div id="timer">3:00</div>
-      <h3 id="activePlayerName"></h3>
-      <p><b id="questionCounter"></b> (<span id="questionWordLength"></span> Harfli)</p>
-      <i id="questionDefinition"></i>
-      <div id="questionPlaceholder"></div>
-      <input type="text" id="answerInput" placeholder="Tahminini yaz" autocomplete="off">
-      <p id="spectatorGuess"></p>
-      <button id="btnSubmitAnswer">Gönder</button>
-      <button id="btnRevealLetter">Harf Al (-100 Puan)</button>
-      <hr>
-      <h3>Skor Tablosu</h3>
-      <ul id="scoreboardList"></ul>
-  </div>
-
-  <div id="endGameScreen" class="container hidden"></div>
-
+  <!-- Firebase SDK - Compat versiyon -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+  <img src="images/logo.png" alt="Logo" id="logo" />
+  <h1>Ekolojik Kelime Oyunu - Online Multiplayer</h1>
+  <div id="timer">3:00</div>
+
+  <div id="startScreen">
+    <label for="playerNameInput">İsminiz:</label><br />
+    <input type="text" id="playerNameInput" placeholder="İsminizi girin" /><br /><br />
+    <label for="playerCountInput">Oyuncu Sayısı (1-5):</label><br />
+    <input type="number" id="playerCountInput" min="1" max="5" value="2" /><br /><br />
+    <label for="roomCodeInput">Oda Kodu (varsa):</label><br />
+    <input type="text" id="roomCodeInput" placeholder="Oda kodu gir veya boş bırak" maxlength="6" /><br /><br />
+    <button id="btnStart">Odaya Katıl / Kur</button>
+  </div>
+
+  <div id="gameArea" style="display:none;">
+    <div id="playerInfo"></div>
+    <div id="questionArea"></div>
+    <div id="scoreboard"></div>
+  </div>
+
+  <footer>
+    <img src="images/altlogo.png" alt="Alt Logo" id="bottomLogo" />
+  </footer>
 
   <script>
-    // --- ELEMENT REFERANSLARI ---
-    const startScreen = document.getElementById('startScreen');
-    const lobbyScreen = document.getElementById('lobbyScreen');
-    const gameArea = document.getElementById('gameArea');
-    const endGameScreen = document.getElementById('endGameScreen');
-    // Diğer elementler fonksiyon içinde seçilecek
+    // Firebase konfigürasyonu
+    const firebaseConfig = {
+      apiKey: "AIzaSyAuFzlMGvI2jKgxiGSbkWHeI5_xzue24iU",
+      authDomain: "ekokelime.firebaseapp.com",
+      databaseURL: "https://ekokelime-default-rtdb.firebaseio.com",
+      projectId: "ekokelime",
+      storageBucket: "ekokelime.firebasestorage.app",
+      messagingSenderId: "691968985782",
+      appId: "1:691968985782:web:e824a4dc2486c1830d7417"
+    };
 
-    // --- FIREBASE & OYUN DEĞİŞKENLERİ ---
-    const firebaseConfig = { /* KENDİ CONFIG BİLGİLERİNİZ */ };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let myPlayerId = localStorage.getItem('myPlayerId') || db.ref().push().key;
-    localStorage.setItem('myPlayerId', myPlayerId);
+    // Oyun değişkenleri
     let playerName = "";
+    let playerCount = 2;
     let roomCode = "";
-    let roomListener = null;
+    let currentPlayerIndex = 0;
+    let players = [];
+    let questionsList = [];
+    let currentQuestionIndex = 0;
+    let scores = [];
     let timerInterval = null;
-    const TURN_DURATION = 180;
+    let timeRemaining = 180;
+    let revealedLetters = [];
+    let currentAnswer = "";
+    let currentGameState = {};
 
+    // Kelimeler ve tanımlar
     const kelimeler = {
-        4: {"Atık": "Kullanım sonrası geriye kalan maddeler", "Azot": "Atmosferde en yüksek yüzdeyle bulunan gaz", "Hava": "Sonrasına cıva getirilerek konuşulan konunun boş olduğunu belirten kelime", "Ağaç": "Orman dokusu", "Otsu": "Ot gibi olan", "Kent": "Şehir", "Park": "Vatandaşların dinlenme ve oyun ihtiyaçlarını karşılayan alan", "Plan": "Belirlenen hedefe ulaşmak için oluşturulan strateji ve yol haritası", "Oyun": "Eğlence amacıyla yapılan etkinlik", "Dere": "Küçük, doğal su yolu"},
-        5: {"Çevre": "Canlıların yaşadığı ve etkileşimde bulunduğu doğal veya insan yapımı ortam", "İklim": "Uzun süreli hava koşulları ortalaması", "Liken": "Mantar ve fotosentetik organizmanın simbiyotik ilişkisi", "Flora": "Bir bölgede bulunan bitki türlerinin toplamı", "Fauna": "Bir bölgede bulunan hayvan türlerinin toplamı", "Deniz": "Karaları çevreleyen geniş su kütlesi", "Bahçe": "Bitki yetiştirmeye ve dinlenmeye uygun düzenlenmiş yeşil alan", "Yeşil": "Bir renk", "Yaban": "Vahşi, doğal", "Yunus": "Sosyal ve zeki memeli"},
-        6: {"Rüzgar": "Havanın hareketiyle oluşan doğal akım", "Toprak": "Bitkilerin yetiştiği ve canlıların barındığı doğal zemin", "Peyzaj": "Fransızca kır manzarası", "Enerji": "Hareketi meydana getiren temel güç", "Deprem": "Yer kabuğunun sarsılması", "YAYSİS": "Yeşil alan yönetim sistemi kısaltması", "Paydaş": "Bir projenin etkilenen birey veya grubu", "Direnç": "Dış etkilere karşı gösterilen tepki", "Heykel": "Taş, metal veya ahşaptan yapılan sanat eseri", "Takson": "Canlıların gruplandırılma birimi"},
-        7: {"Ekoloji": "Canlıların çevreleriyle ilişkisini inceleyen bilim", "Dönüşüm": "Kafka'nın bilinen eseri", "Tasarım": "Estetik ve işlevsel planlama süreci", "Habitat": "Canlıların doğal yaşam alanı", "Erozyon": "Toprağın su veya rüzgarla aşınıp taşınması", "Organik": "Sentetik olmayan", "Ekosfer": "Tüm ekosistemleri kapsayan kavram", "Biyolog": "Canlıları inceleyen bilim insanı", "Kreatif": "Yaratıcı düşünce yeteneği", "Kuşgöçü": "Kanatlı hayvan hicreti"},
-        8: {"Kurakçıl": "Az su isteyen", "Strateji": "Belirli hedefe ulaşma planı", "Kirlilik": "İstenmeyen maddelerin varlığı", "İstanbul": "Metropol", "Ekolojik": "Çevre bilimiyle ilgili", "Çalıştay": "Belli bir konuda, çeşitli konuşmacıların katılımıyla düzenlenen, bilimsel ağırlıklı toplantı", "Atmosfer": "Hava tabakası", "Biyoloji": "Canlıları ve yaşam süreçlerini inceleyen bilim dalı", "Mühendis": "Arapça hendese kelimesinden türeyen kelime; ölçüm yapan, hesaplayan", "Anıtağaç": "Yaşı, tarihi veya doğal özellikleriyle koruma altına alınmış olan"},
-        9: {"Ekosistem": "Canlılar ve çevre arasındaki etkileşim", "Kütüphane": "Bilgi kaynaklarının saklandığı ve okuyuculara sunulduğu yer", "Büyükdere": "Atatürk’ün mirası", "İnovasyon": "Yeni fikir ve ürün geliştirme süreci", "Sulakalan": "Bitki ve hayvan çeşitliliği açısından zengin, nemli ve verimli ekosistemlerdir", "Yeşilçatı": "Çevre dostu yapı tasarımı", "Amenajman": "Ormanların sürdürülebilir kullanımı ve verimli yönetimi için planlama yapan ormancılık alanı", "Departman": "Kuruluş içi bölüm", "Herbaryum": "Kurutulmuş bitki koleksiyonu", "Sıfıratık": "Hammadelerin dönüşümü üzerine kurulan sistem"},
-        10: {"Rekreasyon": "Boş zaman aktiviteleri", "Doğalçevre": "Yapılı olmayan, müdahale görmemiş", "Fotosentez": "Bitkilerin güneş enerjisiyle besin üretme süreci", "Adaptasyon": "Canlıların yaşadıkları çevreye uyum sağlamak için geliştirdiği kalıtsal veya fizyolojik özellikler", "Kentormanı": "Kentsel ekosistemin parçası olan, yeşil doku ve biyoçeşitliliği barındıran alanlar", "Korumazonu": "Ekosistemleri ve biyolojik çeşitliliği korumak amacıyla belirlenen özel alan", "Vejetasyon": "Doğal bitki örtüsü", "Likenoloji": "Mantar ve algların incelenmesi", "Yeşilkuşak": "Şehirleri çevreleyen, ekolojik dengeyi koruyan ağaçlık ve doğal alanlar", "Büyükşehir": "Gelişmiş sosyal ve altyapılı şehir"}
+      4: {
+        "Atık": "Kullanım sonrası geriye kalan maddeler",
+        "Azot": "Atmosferde en yüksek yüzdeyle bulunan gaz",
+        "Hava": "Sonrasına cıva getirilerek konuşulan konunun boş olduğunu belirten kelime",
+        "Ağaç": "Orman dokusu",
+        "Otsu": "Ot gibi olan",
+        "Kent": "Şehir",
+        "Park": "Vatandaşların dinlenme ve oyun ihtiyaçlarını karşılayan alan",
+        "Plan": "Belirlenen hedefe ulaşmak için oluşturulan strateji ve yol haritası",
+        "Oyun": "Eğlence amacıyla yapılan etkinlik",
+        "Dere": "Küçük, doğal su yolu"
+      },
+      5: {
+        "Çevre": "Canlıların yaşadığı ve etkileşimde bulunduğu doğal veya insan yapımı ortam",
+        "İklim": "Uzun süreli hava koşulları ortalaması",
+        "Liken": "Mantar ve fotosentetik organizmanın simbiyotik ilişkisi",
+        "Flora": "Bir bölgede bulunan bitki türlerinin toplamı",
+        "Fauna": "Bir bölgede bulunan hayvan türlerinin toplamı",
+        "Deniz": "Karaları çevreleyen geniş su kütlesi",
+        "Bahçe": "Bitki yetiştirmeye ve dinlenmeye uygun düzenlenmiş yeşil alan",
+        "Yeşil": "Bir renk",
+        "Yaban": "Vahşi, doğal",
+        "Yunus": "Sosyal ve zeki memeli"
+      },
+      6: {
+        "Rüzgar": "Havanın hareketiyle oluşan doğal akım",
+        "Toprak": "Bitkilerin yetiştiği ve canlıların barındığı doğal zemin",
+        "Peyzaj": "Fransızca kır manzarası",
+        "Enerji": "Hareketi meydana getiren temel güç",
+        "Deprem": "Yer kabuğunun sarsılması",
+        "YAYSİS": "Yeşil alan yönetim sistemi kısaltması",
+        "Paydaş": "Bir projenin etkilenen birey veya grubu",
+        "Direnç": "Dış etkilere karşı gösterilen tepki",
+        "Heykel": "Taş, metal veya ahşaptan yapılan sanat eseri",
+        "Takson": "Canlıların gruplandırılma birimi"
+      },
+      7: {
+        "Ekoloji": "Canlıların çevreleriyle ilişkisini inceleyen bilim",
+        "Dönüşüm": "Kafka'nın bilinen e
+seri",
+        "Tasarım": "Estetik ve işlevsel planlama süreci",
+        "Habitat": "Canlıların doğal yaşam alanı",
+        "Erozyon": "Toprağın su veya rüzgarla aşınıp taşınması",
+        "Organik": "Sentetik olmayan",
+        "Ekosfer": "Tüm ekosistemleri kapsayan kavram",
+        "Biyolog": "Canlıları inceleyen bilim insanı",
+        "Kreatif": "Yaratıcı düşünce yeteneği",
+        "Kuşgöçü": "Kanatlı hayvan hicreti"
+      },
+      8: {
+        "Kurakçıl": "Az su isteyen",
+        "Strateji": "Belirli hedefe ulaşma planı",
+        "Kirlilik": "İstenmeyen maddelerin varlığı",
+        "İstanbul": "Metropol",
+        "Ekolojik": "Çevre bilimiyle ilgili",
+        "Çalıştay": "Belli bir konuda, çeşitli konuşmacıların katılımıyla düzenlenen, bilimsel ağırlıklı toplantı",
+        "Atmosfer": "Hava tabakası",
+        "Biyoloji": "Canlıları ve yaşam süreçlerini inceleyen bilim dalı",
+        "Mühendis": "Arapça hendese kelimesinden türeyen kelime; ölçüm yapan, hesaplayan",
+        "Anıtağaç": "Yaşı, tarihi veya doğal özellikleriyle koruma altına alınmış olan"
+      },
+      9: {
+        "Ekosistem": "Canlılar ve çevre arasındaki etkileşim",
+        "Kütüphane": "Bilgi kaynaklarının saklandığı ve okuyuculara sunulduğu yer",
+        "Büyükdere": "Atatürk’ün mirası",
+        "İnovasyon": "Yeni fikir ve ürün geliştirme süreci",
+        "Sulakalan": "Bitki ve hayvan çeşitliliği açısından zengin, nemli ve verimli ekosistemlerdir",
+        "Yeşilçatı": "Çevre dostu yapı tasarımı",
+        "Amenajman": "Ormanların sürdürülebilir kullanımı ve verimli yönetimi için planlama yapan ormancılık alanı",
+        "Departman": "Kuruluş içi bölüm",
+        "Herbaryum": "Kurutulmuş bitki koleksiyonu",
+        "Sıfıratık": "Hammadelerin dönüşümü üzerine kurulan sistem"
+      },
+      10: {
+        "Rekreasyon": "Boş zaman aktiviteleri",
+        "Doğalçevre": "Yapılı olmayan, müdahale görmemiş",
+        "Fotosentez": "Bitkilerin güneş enerjisiyle besin üretme süreci",
+        "Adaptasyon": "Canlıların yaşadıkları çevreye uyum sağlamak için geliştirdiği kalıtsal veya fizyolojik özellikler",
+        "Kentormanı": "Kentsel ekosistemin parçası olan, yeşil doku ve biyoçeşitliliği barındıran alanlar",
+        "Korumazonu": "Ekosistemleri ve biyolojik çeşitliliği korumak amacıyla belirlenen özel alan",
+        "Vejetasyon": "Doğal bitki örtüsü",
+        "Likenoloji": "Mantar ve algların incelenmesi",
+        "Yeşilkuşak": "Şehirleri çevreleyen, ekolojik dengeyi koruyan ağaçlık ve doğal alanlar",
+        "Büyükşehir": "Gelişmiş sosyal ve altyapılı şehir"
+      }
     };
-    const points = { 4: 400, 5: 500, 6: 600, 7: 700, 8: 800, 9: 900, 10: 1000 };
 
-    // --- ODA YÖNETİMİ ---
-    document.getElementById("btnEnterRoom").onclick = async () => {
-      playerName = document.getElementById("playerNameInput").value.trim();
-      if (!playerName) { alert("Lütfen isminizi girin!"); return; }
-      
-      let enteredCode = document.getElementById("roomCodeInput").value.trim().toUpperCase();
-
-      if (enteredCode) await joinRoom(enteredCode);
-      else await createRoom();
+    // Puan tablosu
+    const points = {
+      4: 400,
+      5: 500,
+      6: 600,
+      7: 700,
+      8: 800,
+      9: 900,
+      10: 1000,
     };
 
-    async function createRoom() {
-        roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const maxPlayers = parseInt(document.getElementById("playerCountInput").value);
-        const roomData = {
-            hostId: myPlayerId,
-            maxPlayers: maxPlayers,
-            status: "waiting",
-            players: { [myPlayerId]: { name: playerName, score: 0 } }
-        };
-        await db.ref(`rooms/${roomCode}`).set(roomData);
-        setupListenerAndPresence();
+    // Rastgele oda kodu üret
+    function generateRoomCode() {
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
     }
 
-    async function joinRoom(code) {
-        const roomRef = db.ref(`rooms/${code}`);
-        const snapshot = await roomRef.get();
-        if (!snapshot.exists()) { alert("Oda bulunamadı."); return; }
-        
-        const roomData = snapshot.val();
-        if (roomData.status !== 'waiting') {
-            alert("Bu oyun ya başlamış ya da bitmiş."); return;
+    // Rastgele seçim fonksiyonu
+    function getRandomItems(array, count) {
+      const shuffled = [...array].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, count);
+    }
+
+    // Başlat butonu
+    document.getElementById("btnStart").onclick = async () => {
+      try {
+        playerName = document.getElementById("playerNameInput").value.trim();
+        if (!playerName) {
+          alert("Lütfen isminizi girin!");
+          return;
         }
-        if (Object.keys(roomData.players || {}).length >= roomData.maxPlayers) {
-            alert("Oda dolu."); return;
+        playerCount = parseInt(document.getElementById("playerCountInput").value);
+        if (playerCount < 1 || playerCount > 5) {
+          alert("Oyuncu sayısı 1 ile 5 arasında olmalıdır.");
+          return;
         }
-        
-        roomCode = code;
-        await db.ref(`rooms/${roomCode}/players/${myPlayerId}`).set({ name: playerName, score: 0 });
-        setupListenerAndPresence();
-    }
-    
-    function setupListenerAndPresence() {
-        db.ref(`rooms/${roomCode}/players/${myPlayerId}`).onDisconnect().remove();
-        
-        if (roomListener) db.ref(`rooms/${roomCode}`).off("value", roomListener);
-        
-        roomListener = db.ref(`rooms/${roomCode}`).on("value", (snapshot) => {
-            if (!snapshot.exists()) {
-                alert("Oda kapatıldı.");
-                window.location.reload();
-                return;
-            }
-            routeUI(snapshot.val());
-        });
-    }
+        let enteredCode = document.getElementById("roomCodeInput").value.trim().toUpperCase();
 
-    // --- ARAYÜZ YÖNLENDİRME & GÜNCELLEME ---
-    
-    function routeUI(data){
-        startScreen.classList.add('hidden');
-        lobbyScreen.classList.add('hidden');
-        gameArea.classList.add('hidden');
-        endGameScreen.classList.add('hidden');
-
-        if (data.status === 'waiting') {
-            lobbyScreen.classList.remove('hidden');
-            updateLobbyUI(data);
-        } else if (data.status === 'playing') {
-            gameArea.classList.remove('hidden');
-            updateGameUI(data);
-        } else if (data.status === 'finished') {
-            endGameScreen.classList.remove('hidden');
-            updateEndGameUI(data);
-        }
-    }
-
-    function updateLobbyUI(data) {
-        const players = data.players || {};
-        const isHost = data.hostId === myPlayerId;
-
-        document.getElementById('lobbyRoomCode').textContent = roomCode;
-        document.getElementById('lobbyPlayerCount').textContent = Object.keys(players).length;
-        document.getElementById('lobbyMaxPlayers').textContent = data.maxPlayers;
-        
-        const playerList = document.getElementById('lobbyPlayerList');
-        playerList.innerHTML = Object.values(players).map(p => `<li>${p.name}</li>`).join('');
-        
-        const startButton = document.getElementById('btnForceStart');
-        const waitingText = document.getElementById('lobbyWaitingText');
-        
-        if (isHost) {
-            startButton.classList.remove('hidden');
-            waitingText.classList.add('hidden');
-            startButton.disabled = Object.keys(players).length < 2;
-            startButton.onclick = () => startGame();
+        if (enteredCode) {
+          const roomSnap = await db.ref(`rooms/${enteredCode}`).get();
+          if (!roomSnap.exists()) {
+            alert("Oda bulunamadı.");
+            return;
+          }
+          const roomData = roomSnap.val();
+          if (roomData.players && Object.keys(roomData.players).length >= playerCount) {
+            alert("Oda dolu.");
+            return;
+          }
+          roomCode = enteredCode;
+          const joined = await joinRoom(roomCode);
+          if (joined) {
+            startGame();
+          }
         } else {
-            startButton.classList.add('hidden');
-            waitingText.classList.remove('hidden');
+          roomCode = generateRoomCode();
+          await createRoom(roomCode);
+          startGame();
         }
-    }
+      } catch (error) {
+        alert("Bir hata oluştu: " + error.message);
+      }
+    };
 
-    function updateGameUI(data) {
-        const turn = data.turn;
-        if (!turn) return;
+    // Oda oluştur
+    async function createRoom(code) {
+      try {
+        players = [playerName];
+        scores = [0];
+        currentPlayerIndex = 0;
+        currentQuestionIndex = 0;
 
-        const activePlayerId = data.playerOrder[data.turnIndex];
-        const activePlayer = data.players[activePlayerId];
-        const isMyTurn = myPlayerId === activePlayerId;
-        const currentQuestion = turn.questions[turn.questionIndex];
-
-        if (!currentQuestion) {
-             if (isMyTurn) nextPlayerTurn();
-             return;
-        }
-
-        // Arayüzü güncelle (innerHTML yok!)
-        document.getElementById('activePlayerName').textContent = `Sıradaki Oyuncu: ${activePlayer.name}`;
-        document.getElementById('questionCounter').textContent = `Soru ${turn.questionIndex + 1}/${turn.questions.length}`;
-        document.getElementById('questionWordLength').textContent = currentQuestion.word.length;
-        document.getElementById('questionDefinition').textContent = currentQuestion.definition;
-        
-        let placeholder = currentQuestion.word.split('').map((char, i) => (turn.revealedLetters || [])[i] ? char : '_').join('');
-        document.getElementById('questionPlaceholder').textContent = placeholder;
-
-        const answerInput = document.getElementById('answerInput');
-        answerInput.disabled = !isMyTurn;
-        
-        const spectatorGuess = document.getElementById('spectatorGuess');
-        spectatorGuess.textContent = '';
-
-        if (isMyTurn) {
-            answerInput.value = '';
-            answerInput.focus();
-            answerInput.oninput = e => db.ref(`rooms/${roomCode}/turn/guess`).set(e.target.value);
-        } else {
-            answerInput.value = turn.guess || '';
-            if (turn.guess) {
-                 spectatorGuess.innerHTML = `<b>${activePlayer.name} yazıyor:</b> ${turn.guess}`;
-            }
-        }
-
-        document.getElementById('btnSubmitAnswer').disabled = !isMyTurn;
-        document.getElementById('btnRevealLetter').disabled = !isMyTurn;
-
-        document.getElementById('scoreboardList').innerHTML = data.playerOrder
-            .map(pid => {
-                if (!data.players[pid]) return '';
-                const activeClass = pid === activePlayerId ? 'active-player' : '';
-                return `<li class="${activeClass}"><span>${data.players[pid].name}</span> <span>${data.players[pid].score} Puan</span></li>`
-            }).join('');
-        
-        startTimer(turn.startTime);
-    }
-    
-    function updateEndGameUI(data) {
-        stopTimer();
-        const players = Object.values(data.players || {}).sort((a,b) => b.score - a.score);
-        let html = `
-            <h2>Oyun Bitti!</h2>
-            <h3>Kazanan: ${players.length > 0 ? players[0].name : ''} 🏆</h3>
-            <ul>
-                ${players.map((p, i) => `<li><span>${i+1}. ${p.name}</span> <span>${p.score} Puan</span></li>`).join('')}
-            </ul>
-            <button onclick="window.location.reload()">Yeni Oyun</button>
-        `;
-        endGameScreen.innerHTML = html;
-        setTimeout(() => db.ref(`rooms/${roomCode}`).remove(), 30000);
-    }
-
-
-    // --- OYUN AKIŞI FONKSİYONLARI ---
-
-    function generateQuestions() {
-        const questions = [];
+        // Her uzunluktan sıralı 2 soru seç
+        questionsList = [];
         for (let len = 4; len <= 10; len++) {
-            const words = Object.keys(kelimeler[len] || {}).sort(() => 0.5 - Math.random());
-            for(let i=0; i < 2 && i < words.length; i++){
-                 questions.push({ word: words[i], definition: kelimeler[len][words[i]] });
-            }
+          let keys = Object.keys(kelimeler[len] || {});
+          let selectedWords = getRandomItems(keys, Math.min(2, keys.length));
+          for (let word of selectedWords) {
+            questionsList.push({
+              wordLength: len,
+              word: word,
+              definition: kelimeler[len][word]
+            });
+          }
         }
-        return questions.sort(() => 0.5 - Math.random());
-    }
 
-    async function startGame() {
-        const roomData = (await db.ref(`rooms/${roomCode}`).get()).val();
-        const playerIds = Object.keys(roomData.players).sort(() => 0.5 - Math.random());
-        
-        await db.ref(`rooms/${roomCode}`).update({
-            status: 'playing',
-            playerOrder: playerIds,
-            turnIndex: 0,
-            turn: {
-                playerId: playerIds[0],
-                questions: generateQuestions(),
-                questionIndex: 0,
-                revealedLetters: [],
-                guess: "",
-                startTime: firebase.database.ServerValue.TIMESTAMP
-            }
+        await db.ref(`rooms/${code}`).set({
+          players,
+          playerCount,
+          currentPlayerIndex,
+          currentQuestionIndex,
+          scores,
+          questionsList,
+          revealedLetters: [],
+          timerStart: Date.now(),
+          currentGameState: {}
         });
+        alert(`Oda kuruldu. Kodu diğer oyunculara verin: ${code}`);
+      } catch (error) {
+        alert("Oda oluşturulamadı: " + error.message);
+      }
     }
 
-    document.getElementById('btnSubmitAnswer').onclick = async () => {
-        const roomData = (await db.ref(`rooms/${roomCode}`).get()).val();
-        const correctWord = roomData.turn.questions[roomData.turn.questionIndex].word;
-        const guess = document.getElementById("answerInput").value.trim().toUpperCase();
-        if (!guess) return;
-
-        let scoreChange = (guess === correctWord.toUpperCase()) ? (points[correctWord.length] || 0) : -200;
-        
-        await db.ref(`rooms/${roomCode}/players/${myPlayerId}/score`).set(firebase.database.ServerValue.increment(scoreChange));
-        await moveToNextQuestion();
-    };
-    
-    async function moveToNextQuestion() {
-        const turnRef = db.ref(`rooms/${roomCode}/turn`);
-        const turnData = (await turnRef.get()).val();
-
-        if (turnData.questionIndex + 1 >= turnData.questions.length) {
-            await nextPlayerTurn();
-        } else {
-            await turnRef.update({
-                questionIndex: firebase.database.ServerValue.increment(1),
-                revealedLetters: [],
-                guess: ""
-            });
+    // Odaya katıl
+    async function joinRoom(code) {
+      try {
+        const roomRef = db.ref(`rooms/${code}`);
+        const roomSnap = await roomRef.get();
+        if (!roomSnap.exists()) {
+          alert("Oda bulunamadı.");
+          return false;
         }
+
+        const roomData = roomSnap.val();
+        players = roomData.players || [];
+        scores = roomData.scores || [];
+        currentPlayerIndex = roomData.currentPlayerIndex || 0;
+        currentQuestionIndex = roomData.currentQuestionIndex || 0;
+        questionsList = roomData.questionsList || [];
+
+        if (players.length >= roomData.playerCount) {
+          alert("Oda dolu. Başka bir odaya katılmayı deneyin.");
+          return false;
+        }
+
+        if (!players.includes(playerName)) {
+          players.push(playerName);
+          scores.push(0);
+          await roomRef.update({ players, scores });
+        }
+
+        alert(`Odaya katıldınız: ${code}`);
+        return true;
+      } catch (error) {
+        alert("Odaya katılamadınız: " + error.message);
+        return false;
+      }
     }
 
+    // Oyun başlat
+    function startGame() {
+      document.getElementById("startScreen").style.display = "none";
+      document.getElementById("gameArea").style.display = "block";
+      updatePlayerInfo();
+      listenRoom();
+    }
+
+    // Firebase dinleme
+    function listenRoom() {
+      db.ref(`rooms/${roomCode}`).on("value", (snapshot) => {
+        try {
+          const data = snapshot.val();
+          if (!data) {
+            alert("Oda artık mevcut değil!");
+            document.getElementById("gameArea").style.display = "none";
+            document.getElementById("startScreen").style.display = "block";
+            return;
+          }
+
+          players = data.players || players;
+          scores = data.scores || scores;
+          currentPlayerIndex = data.currentPlayerIndex ?? currentPlayerIndex;
+          currentQuestionIndex = data.currentQuestionIndex ?? currentQuestionIndex;
+          questionsList = data.questionsList || questionsList;
+          revealedLetters = data.revealedLetters || [];
+          currentGameState = data.currentGameState || {};
+
+          updatePlayerInfo();
+          updateScoreboard();
+
+          if (!timerInterval && data.timerStart) {
+            startTimer(data.timerStart);
+          }
+
+          if (players[currentPlayerIndex] === playerName) {
+            showQuestion(true);
+          } else {
+            showQuestion(false);
+          }
+        } catch (error) {
+          alert("Veri alınırken hata oluştu: " + error.message);
+        }
+      });
+    }
+
+    // Oyuncu bilgisi
+    function updatePlayerInfo() {
+      let html = `<h2>Oyuncular:</h2><ul>`;
+      players.forEach((p, i) => {
+        html += `<li>${p} - ${scores[i] || 0} Puan ${i === currentPlayerIndex ? "(Sıra sende)" : ""}</li>`;
+      });
+      html += "</ul>";
+      document.getElementById("playerInfo").innerHTML = html;
+    }
+
+    // Skor panosu
+    function updateScoreboard() {
+      let html = `<h2>Skorlar:</h2><ul>`;
+      players.forEach((p, i) => {
+        html += `<li>${p}: ${scores[i] || 0} Puan</li>`;
+      });
+      html += "</ul>";
+      document.getElementById("scoreboard").innerHTML = html;
+    }
+
+    // Soru göster
+    function showQuestion(isActivePlayer) {
+      if (currentQuestionIndex >= questionsList.length) {
+        nextPlayerTurn();
+        return;
+      }
+
+      const q = questionsList[currentQuestionIndex];
+      currentAnswer = q.word;
+
+      if (revealedLetters.length !== currentAnswer.length) {
+        revealedLetters = new Array(currentAnswer.length).fill(false);
+        currentGameState = {
+          wordLength: q.wordLength,
+          definition: q.definition,
+          placeholder: revealedLetters.map((r, i) => r ? currentAnswer[i] : "_").join(" "),
+          currentInput: ""
+        };
+        db.ref(`rooms/${roomCode}`).update({ revealedLetters, currentGameState });
+      }
+
+      let placeholderStr = revealedLetters.map((r, i) => r ? currentAnswer[i] : "_").join(" ");
+      let html = `
+        <div class="question-text">${q.wordLength} Harfli Kelime</div>
+        <div class="definition-text">${q.definition}</div>
+        <div class="placeholder-text">${placeholderStr}</div>
+      `;
+
+      if (isActivePlayer) {
+        html += `
+          <input type="text" id="answerInput" placeholder="Tahmininizi yazın" autocomplete="off" value="${currentGameState.currentInput || ''}" />
+          <button id="btnSubmitAnswer">Gönder</button>
+          <button id="btnRevealLetter">Harf Aç</button>
+        `;
+      } else {
+        html += `
+          <p>Aktif Oyuncu: ${players[currentPlayerIndex]}</p>
+          <p>Tahmin: ${currentGameState.currentInput || 'Henüz tahmin yok'}</p>
+        `;
+      }
+
+      document.getElementById("questionArea").innerHTML = html;
+
+      if (isActivePlayer) {
+        const answerInput = document.getElementById("answerInput");
+        answerInput.focus();
+        answerInput.addEventListener("input", () => {
+          currentGameState.currentInput = answerInput.value.trim();
+          db.ref(`rooms/${roomCode}/currentGameState`).update({ currentInput: currentGameState.currentInput });
+        });
+        document.getElementById("btnSubmitAnswer").onclick = submitAnswer;
+        document.getElementById("btnRevealLetter").onclick = revealLetter;
+      }
+    }
+
+    // Harf aç
+    function revealLetter() {
+      if (players[currentPlayerIndex] !== playerName) {
+        alert("Sıra sizde değil!");
+        return;
+      }
+
+      let unrevealed = revealedLetters.findIndex(l => !l);
+      if (unrevealed === -1) {
+        alert("Açılacak harf kalmadı!");
+        return;
+      }
+
+      revealedLetters[unrevealed] = true;
+      scores[currentPlayerIndex] = Math.max(0, (scores[currentPlayerIndex] || 0) - 50);
+      currentGameState.placeholder = revealedLetters.map((r, i) => r ? currentAnswer[i] : "_").join(" ");
+      db.ref(`rooms/${roomCode}`).update({ revealedLetters, scores, currentGameState });
+    }
+
+    // Cevap gönder
+    function submitAnswer() {
+      if (players[currentPlayerIndex] !== playerName) {
+        alert("Sıra sizde değil!");
+        return;
+      }
+
+      let guess = document.getElementById("answerInput").value.trim();
+      if (!guess) {
+        alert("Lütfen bir cevap girin.");
+        return;
+      }
+
+      if (guess.toLowerCase() === currentAnswer.toLowerCase()) {
+        scores[currentPlayerIndex] += points[currentAnswer.length] || 0;
+        currentQuestionIndex++;
+        revealedLetters = [];
+        currentGameState = {};
+        db.ref(`rooms/${roomCode}`).update({
+          scores,
+          currentQuestionIndex,
+          revealedLetters,
+          currentGameState
+        });
+      } else {
+        alert("Yanlış cevap, bir sonraki soruya geçiliyor.");
+        currentQuestionIndex++;
+        revealedLetters = [];
+        currentGameState = {};
+        db.ref(`rooms/${roomCode}`).update({
+          currentQuestionIndex,
+          revealedLetters,
+          currentGameState
+        });
+      }
+
+      document.getElementById("answerInput").value = "";
+    }
+
+    // Sıradaki oyuncuya geç
     async function nextPlayerTurn() {
-        stopTimer();
-        const roomData = (await db.ref(`rooms/${roomCode}`).get()).val();
-        if (!roomData || !roomData.playerOrder) return;
+      try {
+        currentQuestionIndex = 0;
+        revealedLetters = [];
+        currentGameState = {};
 
-        const newTurnIndex = roomData.turnIndex + 1;
-
-        if (newTurnIndex >= roomData.playerOrder.length) {
-            await db.ref(`rooms/${roomCode}`).update({ status: 'finished' });
-        } else {
-            const nextPlayerId = roomData.playerOrder[newTurnIndex];
-            await db.ref(`rooms/${roomCode}`).update({
-                turnIndex: newTurnIndex,
-                turn: {
-                    playerId: nextPlayerId,
-                    questions: generateQuestions(),
-                    questionIndex: 0,
-                    revealedLetters: [],
-                    guess: "",
-                    startTime: firebase.database.ServerValue.TIMESTAMP
-                }
+        // Yeni soru listesi oluştur (sıralı)
+        questionsList = [];
+        for (let len = 4; len <= 10; len++) {
+          let keys = Object.keys(kelimeler[len] || {});
+          let selectedWords = getRandomItems(keys, Math.min(2, keys.length));
+          for (let word of selectedWords) {
+            questionsList.push({
+              wordLength: len,
+              word: word,
+              definition: kelimeler[len][word]
             });
-        }
-    }
-    
-    document.getElementById('btnRevealLetter').onclick = async () => {
-        const turnRef = db.ref(`rooms/${roomCode}/turn`);
-        const turnData = (await turnRef.get()).val();
-        const word = turnData.questions[turnData.questionIndex].word;
-        
-        let revealed = turnData.revealedLetters || [];
-        const unrevealedIndexes = [];
-        for(let i = 0; i < word.length; i++) {
-            if(!revealed[i]) unrevealedIndexes.push(i);
+          }
         }
 
-        if(unrevealedIndexes.length > 0) {
-            const randomIndex = unrevealedIndexes[Math.floor(Math.random() * unrevealedIndexes.length)];
-            revealed[randomIndex] = true;
-            
-            await db.ref(`rooms/${roomCode}/players/${myPlayerId}/score`).set(firebase.database.ServerValue.increment(-100));
-            await turnRef.update({ revealedLetters: revealed });
+        currentPlayerIndex++;
+        if (currentPlayerIndex >= players.length) {
+          endGame();
+          return;
         }
-    };
-    
-    // --- ZAMANLAYICI ---
-    function startTimer(startTime) {
-        stopTimer();
-        const timerEl = document.getElementById('timer');
-        timerInterval = setInterval(async () => {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            let timeRemaining = TURN_DURATION - elapsed;
-            
-            if (timeRemaining <= 0) {
-                timeRemaining = 0;
-                stopTimer();
-                const roomData = (await db.ref(`rooms/${roomCode}`).get()).val();
-                if(roomData && roomData.playerOrder && myPlayerId === roomData.playerOrder[roomData.turnIndex]){
-                    nextPlayerTurn();
-                }
-            }
-            const m = Math.floor(timeRemaining / 60);
-            const s = timeRemaining % 60;
-            timerEl.textContent = `${m}:${s < 10 ? "0" + s : s}`;
-        }, 1000);
+
+        await db.ref(`rooms/${roomCode}`).update({
+          currentPlayerIndex,
+          currentQuestionIndex,
+          revealedLetters,
+          questionsList,
+          currentGameState,
+          timerStart: Date.now()
+        });
+      } catch (error) {
+        alert("Sıradaki oyuncuya geçerken hata: " + error.message);
+      }
     }
-    function stopTimer() { if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+
+    // Oyun sonu
+    function endGame() {
+      stopTimer();
+      let maxScore = Math.max(...scores);
+      let winners = players.filter((p, i) => scores[i] === maxScore);
+
+      let html = `
+        <h2>Oyun Bitti!</h2>
+        <h3>Kazanan(lar): ${winners.join(", ")} (${maxScore} Puan)</h3>
+        <h3>Tüm Skorlar:</h3>
+        <ul>
+      `;
+      players.forEach((p, i) => {
+        html += `<li>${p}: ${scores[i] || 0} Puan</li>`;
+      });
+      html += `</ul>
+        <button onclick="location.reload()">Yeni Oyun</button>
+      `;
+      document.getElementById("questionArea").innerHTML = html;
+    }
+
+    // Timer
+    function startTimer(timerStartFrom) {
+      stopTimer();
+
+      timerInterval = setInterval(() => {
+        let elapsed = Math.floor((Date.now() - timerStartFrom) / 1000);
+        timeRemaining = 180 - elapsed;
+
+        if (timeRemaining <= 0) {
+          timeRemaining = 0;
+          updateTimerDisplay();
+          stopTimer();
+          nextPlayerTurn();
+        } else {
+          updateTimerDisplay();
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function updateTimerDisplay() {
+      let m = Math.floor(timeRemaining / 60);
+      let s = timeRemaining % 60;
+      document.getElementById("timer").textContent = `${m}:${s < 10 ? "0" + s : s}`;
+    }
   </script>
 </body>
 </html>
